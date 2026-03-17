@@ -1,0 +1,37 @@
+{
+  "name": "@menutes/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for accessing Menutes meeting transcripts and summaries from Claude Code",
+  "type": "module",
+  "bin": {
+    "menutes-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "prepare": "npm run build",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "menutes",
+    "meetings",
+    "transcription",
+    "claude-code",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
