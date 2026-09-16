@@ -7,13 +7,19 @@ export function registerGetSummary(server: McpServer, api: MenutesApiClient) {
     "get_summary",
     "Get the AI-generated summary of a Menutes recording including discussion points, decisions, and action items.",
     {
-      id: z.string().describe("The recording ID"),
+      id: z.string().trim().min(1).max(200).describe("The recording ID"),
     },
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ id }) => {
       try {
         const content = await api.getRecordingContent(id);
 
-        if (!content.summary) {
+        // Mirror the in-app view: prefer the active (template, language)
+        // variant the user last picked, falling back to the legacy Enhanced
+        // summary when no variant has been chosen yet.
+        const summary = content.activeSummary ?? content.summary;
+
+        if (!summary) {
           return {
             content: [
               {
@@ -24,7 +30,7 @@ export function registerGetSummary(server: McpServer, api: MenutesApiClient) {
           };
         }
 
-        return { content: [{ type: "text", text: content.summary }] };
+        return { content: [{ type: "text", text: summary }] };
       } catch (error) {
         return {
           content: [

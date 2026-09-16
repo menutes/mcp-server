@@ -10,13 +10,14 @@ export function registerGetRecording(
     "get_recording",
     "Get detailed metadata for a specific Menutes recording including title, date, duration, speaker count, status, and sharing scope.",
     {
-      id: z.string().describe("The recording ID"),
+      id: z.string().trim().min(1).max(200).describe("The recording ID"),
     },
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ id }) => {
       try {
         const r = await api.getRecording(id);
 
-        const duration = r.duration
+        const duration = r.duration != null
           ? `${Math.floor(r.duration / 60)}m ${r.duration % 60}s`
           : "unknown";
         const date = new Date(r.createdAt).toLocaleString("en-GB", {

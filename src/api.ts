@@ -16,7 +16,16 @@ export interface Recording {
 
 export interface RecordingContent {
   transcription: string | null;
+  /// Legacy Enhanced summary HTML. Always the original auto-detected language
+  /// variant, regardless of what the user picked in-app. Use `activeSummary`
+  /// when you want "what the user sees": falls back to this when null.
   summary: string | null;
+  /// HTML of the active (template, language) variant the user last picked in
+  /// the native app, when it's COMPLETE and non-empty. null when the user is
+  /// still on the original auto/legacy summary.
+  activeSummary: string | null;
+  activeTemplateId: string | null;
+  activeSummaryLanguage: string | null;
   transcriptSegments: {
     speaker: string;
     text: string;
@@ -67,6 +76,7 @@ export class MenutesApiClient {
     try {
       response = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${this.apiKey}` },
+        signal: AbortSignal.timeout(30_000),
       });
     } catch {
       throw new Error(`Could not connect to Menutes API at ${this.baseUrl}`);

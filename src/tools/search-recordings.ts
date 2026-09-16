@@ -10,7 +10,7 @@ export function registerSearchRecordings(
     "search_recordings",
     "Search Menutes recordings by title. Returns matching recordings with IDs for further querying.",
     {
-      query: z.string().describe("Search query to match against titles"),
+      query: z.string().trim().min(1).max(200).describe("Words to match in titles, not transcript content"),
       limit: z
         .number()
         .int()
@@ -19,6 +19,7 @@ export function registerSearchRecordings(
         .optional()
         .describe("Max results (default: 10, max: 50)"),
     },
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ query, limit }) => {
       try {
         const result = await api.searchRecordings(query, limit);
@@ -40,7 +41,7 @@ export function registerSearchRecordings(
             month: "short",
             year: "numeric",
           });
-          const duration = r.duration
+          const duration = r.duration != null
             ? `${Math.floor(r.duration / 60)}m ${r.duration % 60}s`
             : "unknown";
           return `- **${r.meetingTitle || "Untitled"}** (${date}, ${duration})\n  ID: ${r.id}`;
@@ -50,7 +51,7 @@ export function registerSearchRecordings(
           content: [
             {
               type: "text",
-              text: `Found ${result.total} result(s) for "${query}":\n\n${lines.join("\n")}`,
+              text: `Returned ${result.recordings.length} result(s) (up to the requested limit) for "${query}":\n\n${lines.join("\n")}`,
             },
           ],
         };

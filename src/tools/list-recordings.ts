@@ -34,12 +34,13 @@ export function registerListRecordings(
           "Scope: my (own), team (team-shared), organization (org-wide), all (admin)",
         ),
     },
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async (params) => {
       try {
         const result = await api.listRecordings(params);
 
         const lines = result.recordings.map((r) => {
-          const duration = r.duration
+          const duration = r.duration != null
             ? `${Math.floor(r.duration / 60)}m ${r.duration % 60}s`
             : "unknown";
           const date = new Date(r.createdAt).toLocaleDateString("en-GB", {
@@ -51,7 +52,7 @@ export function registerListRecordings(
         });
 
         const { pagination: p } = result;
-        const header = `Found ${p.total} recording(s) — page ${p.page}/${p.totalPages}`;
+        const header = `Found ${p.total} recording(s): page ${p.page}/${p.totalPages}`;
 
         return {
           content: [
