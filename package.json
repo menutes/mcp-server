@@ -4,7 +4,7 @@
   "description": "MCP server for accessing Menutes meeting transcripts and summaries from Claude Code",
   "type": "module",
   "bin": {
-    "menutes-mcp-server": "./dist/index.js"
+    "menutes-mcp-server": "dist/index.js"
   },
   "files": [
     "dist"
