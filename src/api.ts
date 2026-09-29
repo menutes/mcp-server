@@ -49,7 +49,10 @@ export interface ListRecordingsResponse {
 }
 
 export interface SearchResponse {
-  recordings: Recording[];
+  recordings: Pick<
+    Recording,
+    "id" | "meetingTitle" | "status" | "duration" | "createdAt" | "speakerCount" | "sourceType" | "sharingScope" | "user" | "team" | "isOwner"
+  >[];
   total: number;
 }
 
@@ -115,8 +118,15 @@ export class MenutesApiClient {
     limit?: number;
     status?: string;
     view?: string;
+    search?: string;
   }): Promise<ListRecordingsResponse> {
     return this.request("/api/v1/recordings", params as Record<string, string | number>);
+  }
+
+  /** Total recordings shared with the user that match; drives the "N more shared" hint. */
+  async countShared(params: { status?: string; search?: string }): Promise<number> {
+    const result = await this.listRecordings({ ...params, view: "shared", limit: 1 });
+    return result.pagination.total;
   }
 
   async getRecording(id: string): Promise<Recording> {
@@ -132,9 +142,11 @@ export class MenutesApiClient {
   async searchRecordings(
     query: string,
     limit?: number,
+    view?: string,
   ): Promise<SearchResponse> {
     const params: Record<string, string | number> = { q: query };
     if (limit !== undefined) params.limit = limit;
+    if (view !== undefined) params.view = view;
     return this.request("/api/v1/recordings/search", params);
   }
 }

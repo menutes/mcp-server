@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { MenutesApiClient } from "../api.js";
+import { MenutesApiClient, Recording } from "../api.js";
+import { SCOPE_TO_VIEW, ownerSuffix, scopeHeading, scopeSchema, sharedHint } from "../scope.js";
 
 export function registerListRecordings(
   server: McpServer,
@@ -8,8 +9,9 @@ export function registerListRecordings(
 ) {
   server.tool(
     "list_recordings",
-    "List your Menutes meeting recordings with optional filtering. Returns titles, dates, durations, and IDs for further querying.",
+    "List Menutes meeting recordings. By default returns only the user's own recordings. Use scope=\"shared\" for meetings colleagues shared with the user (team or organization), or scope=\"all\" when the user asks about team meetings, a colleague's meeting, or a topic that may be in someone else's meeting. Rows the user does not own name their owner; say whose meeting it is when you use one. Returns titles, dates, durations, and IDs.",
     {
+      scope: scopeSchema,
       page: z
         .number()
         .int()
@@ -27,19 +29,17 @@ export function registerListRecordings(
         .enum(["UPLOADING", "PROCESSING", "COMPLETED", "FAILED"])
         .optional()
         .describe("Filter by recording status"),
-      view: z
-        .enum(["my", "team", "organization", "all"])
-        .optional()
-        .describe(
-          "Scope: my (own), team (team-shared), organization (org-wide), all (admin)",
-        ),
     },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    async (params) => {
+    async ({ scope = "mine", page, limit, status }) => {
       try {
-        const result = await api.listRecordings(params);
+        const [result, sharedCount] = await Promise.all([
+          api.listRecordings({ page, limit, status, view: SCOPE_TO_VIEW[scope] }),
+          // The hint is a convenience; never fail the listing over it.
+          scope === "mine" ? api.countShared({ status }).catch(() => 0) : Promise.resolve(0),
+        ]);
 
-        const lines = result.recordings.map((r) => {
+        const line = (r: Recording) => {
           const duration = r.duration != null
             ? `${Math.floor(r.duration / 60)}m ${r.duration % 60}s`
             : "unknown";
@@ -48,16 +48,24 @@ export function registerListRecordings(
             month: "short",
             year: "numeric",
           });
-          return `- **${r.meetingTitle || "Untitled"}** (${date}, ${duration}, ${r.speakerCount ?? "?"} speakers) [${r.status}]\n  ID: ${r.id}`;
-        });
+          return `- **${r.meetingTitle || "Untitled"}** (${date}, ${duration}, ${r.speakerCount ?? "?"} speakers) [${r.status}]${ownerSuffix(r)}\n  ID: ${r.id}`;
+        };
 
         const { pagination: p } = result;
-        const header = `Found ${p.total} recording(s): page ${p.page}/${p.totalPages}`;
+        const sections: string[] = [`${scopeHeading(scope)}: ${p.total} found (page ${p.page}/${p.totalPages})`];
+
+        if (scope === "all") {
+          const own = result.recordings.filter((r) => r.isOwner);
+          const shared = result.recordings.filter((r) => !r.isOwner);
+          if (own.length) sections.push(`Your recordings:\n${own.map(line).join("\n")}`);
+          if (shared.length) sections.push(`Shared with you:\n${shared.map(line).join("\n")}`);
+        } else if (result.recordings.length) {
+          sections.push(result.recordings.map(line).join("\n"));
+        }
+        if (sharedCount > 0) sections.push(sharedHint(sharedCount));
 
         return {
-          content: [
-            { type: "text", text: `${header}\n\n${lines.join("\n")}` },
-          ],
+          content: [{ type: "text", text: sections.join("\n\n") }],
         };
       } catch (error) {
         return {

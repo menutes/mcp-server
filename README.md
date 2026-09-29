@@ -32,13 +32,13 @@ Hosted OAuth authorizations can be revoked at [Connected apps](https://app.menut
 
 | Tool | Description |
 |------|-------------|
-| `list_recordings` | List meetings with optional filtering by status and scope |
+| `list_recordings` | List meetings, your own by default, with optional `scope` and status filters |
 | `get_recording` | Get metadata for a specific recording |
 | `get_transcript` | Get speaker-labeled transcript with timestamps |
 | `get_summary` | Get AI-generated summary with action items |
-| `search_recordings` | Search recordings by title |
+| `search_recordings` | Search recording titles, your own by default, with optional `scope` |
 
-All five tools are read-only. Search matches completed meeting titles, not transcript content. List/search default to your own meetings; list additionally accepts `view` (`my`, `team`, `organization`, `all` for admins). Shared access and history limits apply. Private recordings belong to their owner, including when the caller is an admin. Deleted recordings are excluded.
+All five tools are read-only. Search matches completed meeting titles, not transcript content. List and search default to your own meetings. Pass `scope: "shared"` for meetings colleagues shared with you, or `scope: "all"` for both; shared results name their owner. When shared meetings also match, the default result says so. (0.2.0 replaced the earlier `view` parameter.) Shared access and history limits apply. Private recordings belong to their owner, including when the caller is an admin. Deleted recordings are excluded.
 
 Summary retrieval prefers the active template/language when available. Ask for a summary first for long meetings; a full transcript may exceed the assistant's context limit. There are no write tools, date-range filters, or deep-research search/fetch tools.
 

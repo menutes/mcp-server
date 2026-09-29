@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { MenutesApiClient } from "../api.js";
+import { SCOPE_TO_VIEW, ownerSuffix, scopeHeading, scopeNoun, scopeSchema, sharedHint } from "../scope.js";
 
 export function registerSearchRecordings(
   server: McpServer,
@@ -8,9 +9,10 @@ export function registerSearchRecordings(
 ) {
   server.tool(
     "search_recordings",
-    "Search Menutes recordings by title. Returns matching recordings with IDs for further querying.",
+    "Search Menutes recordings by title (not transcript content). By default searches only the user's own recordings; use scope=\"all\" to include meetings colleagues shared with the user, or scope=\"shared\" for only those. Rows the user does not own name their owner. Returns IDs for get_summary and get_transcript.",
     {
       query: z.string().trim().min(1).max(200).describe("Words to match in titles, not transcript content"),
+      scope: scopeSchema,
       limit: z
         .number()
         .int()
@@ -20,16 +22,23 @@ export function registerSearchRecordings(
         .describe("Max results (default: 10, max: 50)"),
     },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    async ({ query, limit }) => {
+    async ({ query, scope = "mine", limit }) => {
       try {
-        const result = await api.searchRecordings(query, limit);
+        const [result, sharedCount] = await Promise.all([
+          api.searchRecordings(query, limit, SCOPE_TO_VIEW[scope]),
+          // The hint is a convenience; never fail the search over it.
+          scope === "mine"
+            ? api.countShared({ status: "COMPLETED", search: query }).catch(() => 0)
+            : Promise.resolve(0),
+        ]);
+        const hint = sharedCount > 0 ? `\n\n${sharedHint(sharedCount)}` : "";
 
         if (result.recordings.length === 0) {
           return {
             content: [
               {
                 type: "text",
-                text: `No recordings found matching "${query}".`,
+                text: `No titles matching "${query}" among ${scopeNoun(scope)}.${hint}`,
               },
             ],
           };
@@ -44,14 +53,14 @@ export function registerSearchRecordings(
           const duration = r.duration != null
             ? `${Math.floor(r.duration / 60)}m ${r.duration % 60}s`
             : "unknown";
-          return `- **${r.meetingTitle || "Untitled"}** (${date}, ${duration})\n  ID: ${r.id}`;
+          return `- **${r.meetingTitle || "Untitled"}** (${date}, ${duration})${ownerSuffix(r)}\n  ID: ${r.id}`;
         });
 
         return {
           content: [
             {
               type: "text",
-              text: `Returned ${result.recordings.length} result(s) (up to the requested limit) for "${query}":\n\n${lines.join("\n")}`,
+              text: `${scopeHeading(scope)} with titles matching "${query}": ${result.recordings.length} returned (up to the requested limit).\n\n${lines.join("\n")}${hint}`,
             },
           ],
         };

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { MenutesApiClient } from "../api.js";
+import { sharingLabel } from "../scope.js";
 
 export function registerGetRecording(
   server: McpServer,
@@ -34,9 +35,9 @@ export function registerGetRecording(
           `Duration: ${duration}`,
           `Speakers: ${r.speakerCount ?? "unknown"}`,
           `Status: ${r.status}`,
-          `Sharing: ${r.sharingScope}`,
+          `Sharing: ${sharingLabel(r.sharingScope, r.team?.name)}`,
           `Source: ${r.sourceType}`,
-          `Owner: ${r.user.name || r.user.id}${r.team ? ` (${r.team.name})` : ""}`,
+          `Owner: ${r.isOwner ? "you" : r.user.name || "a colleague"}`,
           `ID: ${r.id}`,
         ].join("\n");
 
